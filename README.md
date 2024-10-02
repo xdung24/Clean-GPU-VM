@@ -40,7 +40,7 @@ Minor changes:
 * Adds language and timezone to the configurable parameters of the installation.
 * The installation sets the time for turning off the display to "Never".
 * Create shared folder by default, so the host can copy data into VM easily.
-
+* Disable some windows feature and services, such as Cortana, Defender, AutoUpdate, Bluetooth
 
 ## Prerequisites:
 
