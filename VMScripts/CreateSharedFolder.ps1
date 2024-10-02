@@ -8,6 +8,24 @@ Function Is-Administrator {
     (New-Object Security.Principal.WindowsPrincipal $CurrentUser).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)  
 }
 
+# Enable Guest user account
+Function Enable-Guest-User {
+    $guestAccount = Get-LocalUser -Name "Guest"
+    if ($guestAccount) {
+        Write-Output "INFO   : Guest user account already exists."
+        return
+    }
+
+    # Enable the guest account
+    try {
+        Enable-LocalUser -Name "Guest"
+        Write-Output "INFO   : Guest user account enabled successfully."
+    }
+    catch {
+        Write-Output "ERROR  : Failed to enable Guest user account. $_"
+    }
+}
+
 # Enable file sharing
 Function Enable-FileSharing {
     # Turn on network sharing
@@ -41,8 +59,6 @@ Function New-ShareFolder {
 
     # get last part of SharedFolder
     $SharedFolderName = $SharedFolder -split '\\' | Select-Object -Last 1
-    $permissions = "Full"
-    $account = "Everyone"
 
     # Create the folder if it doesn't exist
     if (-Not (Test-Path -Path $SharedFolder)) {
@@ -51,23 +67,28 @@ Function New-ShareFolder {
     }
 
     # Check if the name is already shared
+    $everyoneAccount = "Everyone"
+
     $shared = Get-SmbShare | Where-Object { $_.Name -eq $SharedFolderName }
     if ($shared) {
         Write-Output "INFO   : Folder '$SharedFolder' is already shared."
-        return
+    }else {
+        try {
+            New-SmbShare -Name $SharedFolderName -Path $SharedFolder -FullAccess $everyoneAccount
+            Write-Output "INFO   : Shared folder '$SharedFolder' successfully."
+        }
+        catch {
+            Write-Output "ERROR  : Failed to create SMB share. $_"
+        }
     }
 
     # Share the folder
+    $permissions = "Full"
+    $guestAccount = "Guest"
+   
     try {
-        New-SmbShare -Name $SharedFolderName -Path $SharedFolder -FullAccess $account
-        Write-Output "INFO   : Shared folder '$SharedFolder' successfully."
-    }
-    catch {
-        Write-Output "ERROR  : Failed to create SMB share. $_"
-    }
-
-    try {
-        Grant-SmbShareAccess -Name $SharedFolderName -AccountName $account -AccessRight $permissions -Force
+        Grant-SmbShareAccess -Name $SharedFolderName -AccountName $everyoneAccount -AccessRight $permissions -Force
+        Grant-SmbShareAccess -Name $SharedFolderName -AccountName $guestAccount -AccessRight $permissions -Force
         Write-Output "INFO   : Everyone access folder '$SharedFolder' granted successfully."    
     }
     catch {
@@ -77,8 +98,11 @@ Function New-ShareFolder {
     # Set the shared folder permissions
     try {
         $acl = Get-Acl -Path $SharedFolder
-        $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($account, $permissions, "ContainerInherit,ObjectInherit", "None", "Allow")
-        $acl.SetAccessRule($accessRule)
+        $everyoneAccessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($account, $permissions, "ContainerInherit,ObjectInherit", "None", "Allow")
+        $acl.SetAccessRule($everyoneAccessRule)
+        $guestAccessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($guestAccount, $permissions, "ContainerInherit,ObjectInherit", "None", "Allow")
+        $acl.SetAccessRule($guestAccessRule)
+
         Set-Acl -Path $SharedFolder -AclObject $acl
         Write-Output "INFO   : Permissions set for shared folder '$SharedFolder'."
     }
@@ -132,10 +156,13 @@ if (-Not (Is-Administrator)) {
     SmartExit -NoHalt
 }
 
+# Enable Guest user account
+Enable-Guest-User
+
 # Enable FileSharing
 Enable-FileSharing
 
-# Call the function with the updated parameters
+# Create shared folder
 New-ShareFolder e -SharedFolder $params.SharedFolder
 
 $exitReason = @"

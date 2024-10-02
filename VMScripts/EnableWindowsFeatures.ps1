@@ -173,7 +173,7 @@ Function Enable-Windows-Services {
 
 # Variables
 $onedrivePath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
-$taskName = "DisableWindowFeatures"
+$taskName = "EnableWindowFeatures"
 $onedriveInstalled = $false
 
 # Check for OneDrive installation
