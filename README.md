@@ -38,7 +38,8 @@ A summary of the most important changes compared to the original project:
 Minor changes:
 * The installation also disables the OneDrive autostart. It caused problems due to setting up a local account and not a Microsoft account.
 * Adds language and timezone to the configurable parameters of the installation.
-* The installation sets the time for turning off the display to "Never". 
+* The installation sets the time for turning off the display to "Never".
+* Create shared folder by default, so the host can copy data into VM easily.
 
 
 ## Prerequisites:
